@@ -35,7 +35,7 @@ fn main() {
     //     .map(|&x| Complex32::new(x, 0.0))
     //     .collect::<Vec<_>>();
 
-    let mut f = [
+    let f = [
         Complex32::new(1.0, 0.0),
         Complex32::new(2.0, -1.0),
         Complex32::new(0.0, -1.0),
