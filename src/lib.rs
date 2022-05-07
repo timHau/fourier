@@ -4,10 +4,6 @@ use num_complex::Complex64;
 use plotters::prelude::*;
 use std::{f64::consts::PI, ops::Range};
 
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 pub fn dft(signal: &[Complex64]) -> Vec<Complex64> {
     let n = signal.len();
     let mut result = vec![Complex64::new(0.0, 0.0); n];
