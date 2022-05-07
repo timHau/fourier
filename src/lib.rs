@@ -2,9 +2,7 @@ mod utils;
 
 use num_complex::Complex64;
 use plotters::prelude::*;
-use rand::Rng;
-use std::f64::consts::PI;
-use wasm_bindgen::prelude::*;
+use std::{f64::consts::PI, ops::Range};
 
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
@@ -15,7 +13,7 @@ pub fn dft(signal: &[Complex64]) -> Vec<Complex64> {
     let mut result = vec![Complex64::new(0.0, 0.0); n];
     for j in 0..n {
         for k in 0..n {
-            let angle = 2.0 * PI * (j as f64 * k as f64) / (n as f64);
+            let angle = 2.0 * PI * (j * k) as f64 / (n as f64);
             let c = Complex64::new(angle.cos(), -angle.sin());
             result[j] += signal[k] * c;
         }
@@ -23,22 +21,12 @@ pub fn dft(signal: &[Complex64]) -> Vec<Complex64> {
     result
 }
 
-#[wasm_bindgen]
-pub fn dft_real(signal: &[f64]) -> Vec<f64> {
-    utils::set_panic_hook();
-
+pub fn dft_real(signal: &[f64]) -> Vec<Complex64> {
     let complex_signal = signal
         .iter()
         .map(|x| Complex64::new(*x, 0.0))
         .collect::<Vec<_>>();
-    let complex_result = dft(&complex_signal);
-
-    let mut result = vec![0.0; 2 * signal.len()];
-    for i in 0..signal.len() {
-        result[2 * i] = complex_result[i].re;
-        result[2 * i + 1] = complex_result[i].im;
-    }
-    result
+    return dft(&complex_signal);
 }
 
 pub fn idft(spectrum: &[Complex64]) -> Vec<Complex64> {
@@ -55,34 +43,69 @@ pub fn idft(spectrum: &[Complex64]) -> Vec<Complex64> {
     result
 }
 
-fn random_signal() -> Vec<Complex64> {
-    let mut rng = rand::thread_rng();
-    let num_samples = 200;
-    let mut signal = vec![0.0; num_samples];
-    for _ in 0..2 {
-        let freq: f64 = rng.gen_range(0.0..10.0);
-        let amp: f64 = rng.gen_range(0.0..1.0);
-        for i in 0..num_samples {
-            signal[i] += amp * f64::sin(2.0 * PI * freq * (i as f64));
-        }
-    }
-    signal.iter().map(|x| Complex64::new(*x, 0.0)).collect()
-}
-
-fn plot_signal(signal: &[Complex64]) -> Result<(), Box<dyn std::error::Error>> {
-    let root = BitMapBackend::new("signal.png", (640, 640)).into_drawing_area();
+fn plot_signal(
+    signal: &[f64],
+    title: &str,
+    x_range: Range<f64>,
+    y_range: Range<f64>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let root = BitMapBackend::new(title, (640, 420)).into_drawing_area();
     root.fill(&WHITE)?;
-    let mut chart =
-        ChartBuilder::on(&root).build_cartesian_2d(0.0f64..200f64, -2.0f64..2.0f64)?;
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(5)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(x_range, y_range)?;
+
+    chart
+        .configure_mesh()
+        .disable_mesh()
+        .x_desc("x")
+        .y_desc("y")
+        .draw()?;
 
     chart.draw_series(LineSeries::new(
-        signal.iter().enumerate().map(|(i, s)| (i as f64, s.re)),
+        signal.iter().enumerate().map(|(i, s)| (i as f64, *s)),
         &RED,
     ))?;
 
     chart.configure_series_labels().draw()?;
+
     root.present()?;
     Ok(())
+}
+
+fn fftshift_1d(spectrum: &[f64]) -> Vec<f64> {
+    let n = spectrum.len();
+    let mut spectrum = spectrum.to_vec();
+    {
+        let (left, right) = spectrum.split_at_mut(n / 2);
+        left.swap_with_slice(right);
+    }
+    spectrum
+}
+
+fn absolute_spectrum(spectrum: &[Complex64]) -> Vec<f64> {
+    spectrum.iter().map(|x| x.norm()).collect::<Vec<_>>()
+}
+
+fn plot_spectrum(spectrum: &[Complex64]) -> Result<(), Box<dyn std::error::Error>> {
+    let n = spectrum.len();
+    // we are only in the absolute value of the spectrum
+    let mut abs_spectrum = absolute_spectrum(spectrum);
+    // we need to shift the spectrum to the center
+    abs_spectrum = fftshift_1d(&abs_spectrum);
+    // the spectrum is symmetric around 0.0 we only need the positive part
+    abs_spectrum = abs_spectrum.into_iter().take(n / 2).collect::<Vec<_>>();
+    abs_spectrum.reverse();
+
+    plot_signal(
+        &abs_spectrum,
+        "spectrum.png",
+        0.0..(n as f64) / 2.0,
+        -10.0..300.0,
+    )
 }
 
 #[cfg(test)]
@@ -100,8 +123,45 @@ mod tests {
 
     #[test]
     fn tmp_2() {
-        let signal = random_signal();
-        plot_signal(&signal);
+        let num_samples = 640;
+        let mut signal = vec![0.0; num_samples];
+
+        let freq_1 = 50.0;
+        let freq_2 = 100.0;
+
+        for i in 0..num_samples {
+            signal[i] += f64::sin(2.0 * PI * freq_1 * (i as f64) / (num_samples as f64))
+                + 0.5 * f64::sin(2.0 * PI * freq_2 * (i as f64) / (num_samples as f64));
+        }
+
+        plot_signal(&signal, "signal.png", 0.0..(num_samples as f64), -2.0..2.0)
+            .expect("plotting failed");
+
+        let spectrum = dft_real(&signal);
+        plot_spectrum(&spectrum).expect("plotting failed");
+    }
+
+    #[test]
+    fn abs_spec() {
+        let spec = vec![
+            Complex64::new(0.0, 0.0),
+            Complex64::new(3.0, -4.0),
+            Complex64::new(-6.0, -8.0),
+            Complex64::new(15.0, 20.0),
+        ];
+        let abs_spec = absolute_spectrum(&spec);
+        let expect = vec![0.0, 5.0, 10.0, 25.0];
+        assert_eq!(abs_spec, expect);
+    }
+
+    #[test]
+    fn fftshift_1() {
+        let signal = [0.0, 1.0, 2.0, 3.0, 4.0, -5.0, -4.0, -3.0, -2.0, -1.0];
+        let shifted = fftshift_1d(&signal);
+        assert_eq!(
+            shifted,
+            [-5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0]
+        );
     }
 
     #[test]
