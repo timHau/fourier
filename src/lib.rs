@@ -189,4 +189,19 @@ mod tests {
         let result = dft(&f);
         compare_vecs(&result, &expect);
     }
+
+    #[test]
+    fn idft_test() {
+        let f = [
+            Complex64::new(1.0, 0.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(-1.0, 0.0),
+            Complex64::new(1.5, 0.0),
+        ];
+        let spectrum = dft(&f);
+        let signal = idft(&spectrum);
+        compare_vecs(&signal, &f);
+    }
+
 }
