@@ -30,7 +30,7 @@ pub fn idft(spectrum: &[Complex64]) -> Vec<Complex64> {
     let mut result = vec![Complex64::new(0.0, 0.0); n];
     for j in 0..n {
         for k in 0..n {
-            let angle = 2.0 * PI * (j as f64 * k as f64) / (n as f64);
+            let angle = 2.0 * PI * (j * k) as f64 / (n as f64);
             let c = Complex64::new(angle.cos(), angle.sin());
             result[j] += spectrum[k] * c;
         }
@@ -84,7 +84,10 @@ pub fn absolute_spectrum(spectrum: &[Complex64]) -> Vec<f64> {
     spectrum.iter().map(|x| x.norm()).collect::<Vec<_>>()
 }
 
-pub fn plot_spectrum(spectrum: &[Complex64]) -> Result<(), Box<dyn std::error::Error>> {
+pub fn plot_spectrum(
+    spectrum: &[Complex64],
+    title: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let n = spectrum.len();
     // we are only in the absolute value of the spectrum
     let mut abs_spectrum = absolute_spectrum(spectrum);
@@ -94,7 +97,50 @@ pub fn plot_spectrum(spectrum: &[Complex64]) -> Result<(), Box<dyn std::error::E
     abs_spectrum = abs_spectrum.into_iter().take(n / 2).collect::<Vec<_>>();
     abs_spectrum.reverse();
 
-    plot_signal(&abs_spectrum, "spectrum.png", -10.0..300.0)
+    plot_signal(&abs_spectrum, title, -10.0..300.0)
+}
+
+pub fn fft_step(signal: &[f64], stride: usize) -> Vec<Complex64> {
+    let n = signal.len();
+    if n == 1 {
+        return vec![Complex64::new(signal[0], 0.0)];
+    } else {
+        let mut even = vec![];
+        even.reserve(n / 2);
+        let mut odd = vec![];
+        odd.reserve(n / 2);
+        for i in 0..n {
+            if i % 2 == 0 {
+                even.push(signal[i]);
+            } else {
+                odd.push(signal[i]);
+            }
+        }
+
+        let even_parts = fft_step(&even, stride * 2);
+        let odd_parts = fft_step(&odd, stride * 2);
+        let mut result = vec![Complex64::new(0.0, 0.0); n];
+        for k in 0..n / 2 {
+            let angle = 2.0 * PI * (k as f64) / (n as f64);
+            let c = Complex64::new(angle.cos(), -angle.sin());
+            result[k] = even_parts[k] + c * odd_parts[k];
+            result[k + n / 2] = even_parts[k] - c * odd_parts[k];
+        }
+        result
+    }
+}
+
+pub fn fft(signal: &[f64]) -> Vec<Complex64> {
+    let n = signal.len();
+    let mut signal = signal.to_vec();
+    if !n.is_power_of_two() {
+        // extend periodically
+        signal.resize(n.next_power_of_two(), 0.0);
+        for i in n..n.next_power_of_two() {
+            signal[i] = signal[i % n];
+        }
+    }
+    fft_step(&signal, 1)
 }
 
 #[cfg(test)]
@@ -111,8 +157,24 @@ mod tests {
     }
 
     #[test]
-    fn example_plot() {
-        let n = 320;
+    fn example_plot_fft() {
+        let n = 256;
+        let mut signal = vec![0.0; n];
+
+        let freq_1 = 10.0;
+        let freq_2 = 100.0;
+        for i in 0..n {
+            signal[i] += f64::sin(2.0 * PI * freq_1 * (i as f64) / (n as f64))
+                + f64::sin(2.0 * PI * freq_2 * (i as f64) / (n as f64));
+        }
+
+        let spectrum = fft(&signal);
+        assert!(plot_spectrum(&spectrum, "spectrum_fft.png").is_ok());
+    }
+
+    #[test]
+    fn example_plot_dft() {
+        let n = 256;
         let mut signal = vec![0.0; n];
 
         let freq_1 = 10.0;
@@ -125,7 +187,7 @@ mod tests {
         assert!(plot_signal(&signal, "signal.png", -2.0..2.0).is_ok());
 
         let spectrum = dft_real(&signal);
-        assert!(plot_spectrum(&spectrum).is_ok());
+        assert!(plot_spectrum(&spectrum, "spectrum_dft.png").is_ok());
     }
 
     #[test]
@@ -203,5 +265,4 @@ mod tests {
         let signal = idft(&spectrum);
         compare_vecs(&signal, &f);
     }
-
 }
