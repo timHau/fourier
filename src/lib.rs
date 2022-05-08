@@ -1,6 +1,6 @@
 mod utils;
 
-use ndarray::{array, Array, Array2, ArrayBase, ArrayView, Dim};
+use ndarray::{Array2, ArrayView};
 use num_complex::Complex64;
 use std::{error::Error, f64::consts::PI};
 
@@ -39,31 +39,22 @@ pub fn idft(spectrum: &[Complex64]) -> Vec<Complex64> {
     result
 }
 
-pub fn fft_step(signal: &[Complex64], stride: usize) -> Vec<Complex64> {
+pub fn fft_step(signal: &[Complex64]) -> Vec<Complex64> {
     let n = signal.len();
     if n == 1 {
         return signal.to_vec();
     } else {
-        let mut even = vec![];
-        even.reserve(n / 2);
-        let mut odd = vec![];
-        odd.reserve(n / 2);
-        for i in 0..n {
-            if i % 2 == 0 {
-                even.push(signal[i]);
-            } else {
-                odd.push(signal[i]);
-            }
-        }
+        let even = signal.iter().copied().step_by(2).collect::<Vec<_>>();
+        let odd = signal.iter().copied().skip(1).step_by(2).collect::<Vec<_>>();
 
-        let even_parts = fft_step(&even, stride * 2);
-        let odd_parts = fft_step(&odd, stride * 2);
-        let mut result = vec![Complex64::new(0.0, 0.0); n];
-        for k in 0..n / 2 {
-            let angle = 2.0 * PI * (k as f64) / (n as f64);
-            let c = Complex64::new(angle.cos(), -angle.sin());
-            result[k] = even_parts[k] + c * odd_parts[k];
-            result[k + n / 2] = even_parts[k] - c * odd_parts[k];
+        let even_parts = fft_step(&even);
+        let odd_parts = fft_step(&odd);
+        let mut result = vec![Complex64::default(); n];
+        for k in 0..(n / 2){
+            let angle = (2.0 * PI * (k as f64)) / (n as f64);
+            let c = Complex64::new(angle.cos(), -angle.sin()) * odd_parts[k];
+            result[k] = even_parts[k] + c;
+            result[k + n / 2] = even_parts[k] - c;
         }
         result
     }
@@ -71,17 +62,9 @@ pub fn fft_step(signal: &[Complex64], stride: usize) -> Vec<Complex64> {
 
 pub fn fft(signal: &[Complex64]) -> Vec<Complex64> {
     let n = signal.len();
-    let mut signal = signal.to_vec();
-    if !n.is_power_of_two() {
-        // extend periodically
-        signal.resize(n.next_power_of_two(), Complex64::default());
-        for i in n..n.next_power_of_two() {
-            signal[i] = signal[i % n];
-        }
-    }
-    let mut res = fft_step(&signal, 1);
-    // resize the signal to the original size
-    res.resize(n, Complex64::default());
+    assert!(n.is_power_of_two());
+    let signal = signal.to_vec();
+    let res = fft_step(&signal);
     res
 }
 
@@ -129,14 +112,21 @@ mod tests {
 
     #[test]
     fn test_fft2() {
-        let a = array![
+        let signal = array![
             [Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0)],
             [Complex64::new(3.0, 0.0), Complex64::new(4.0, 0.0)],
-            [Complex64::new(5.0, 0.0), Complex64::new(6.0, 0.0)]
+            [Complex64::new(5.0, 0.0), Complex64::new(6.0, 0.0)],
+            [Complex64::new(7.0, 0.0), Complex64::new(8.0, 0.0)],
         ];
+        let res = fft2(&signal);
+    }
 
-        let res = fft2(&a);
-        println!("{:?}", res);
+    #[test]
+    fn dft_fft_real_power_of_two() {
+        let signal = vec![1.0, 2.0, 3.0, 4.0];
+        let res_fft = fft_real(&signal);
+        let res_dft = dft_real(&signal);
+        compare_vecs(&res_fft, &res_dft);
     }
 
     #[test]
@@ -163,7 +153,6 @@ mod tests {
             Complex64::new(6.0, 0.0),
             Complex64::new(7.0, 0.0),
             Complex64::new(8.0, 0.0),
-            Complex64::new(9.0, 0.0),
         ];
         let res = fft(&signal);
         assert_eq!(res.len(), signal.len());
@@ -182,7 +171,7 @@ mod tests {
         }
 
         let spectrum = fft_real(&signal);
-        assert!(utils::plot_spectrum(&spectrum, "spectrum_fft.png").is_ok());
+        assert!(utils::plot_spectrum(&spectrum, "./img/spectrum_fft.png").is_ok());
     }
 
     #[test]
@@ -197,10 +186,10 @@ mod tests {
                 + f64::sin(2.0 * PI * freq_2 * (i as f64) / (n as f64));
         }
 
-        assert!(utils::plot_signal(&signal, "signal.png", -2.0..2.0).is_ok());
+        assert!(utils::plot_signal(&signal, "./img/signal.png", -2.0..2.0).is_ok());
 
         let spectrum = dft_real(&signal);
-        assert!(utils::plot_spectrum(&spectrum, "spectrum_dft.png").is_ok());
+        assert!(utils::plot_spectrum(&spectrum, "./img/spectrum_dft.png").is_ok());
     }
 
     #[test]
