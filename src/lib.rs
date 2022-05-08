@@ -45,12 +45,17 @@ pub fn fft_step(signal: &[Complex64]) -> Vec<Complex64> {
         return signal.to_vec();
     } else {
         let even = signal.iter().copied().step_by(2).collect::<Vec<_>>();
-        let odd = signal.iter().copied().skip(1).step_by(2).collect::<Vec<_>>();
+        let odd = signal
+            .iter()
+            .copied()
+            .skip(1)
+            .step_by(2)
+            .collect::<Vec<_>>();
 
         let even_parts = fft_step(&even);
         let odd_parts = fft_step(&odd);
         let mut result = vec![Complex64::default(); n];
-        for k in 0..(n / 2){
+        for k in 0..(n / 2) {
             let angle = (2.0 * PI * (k as f64)) / (n as f64);
             let c = Complex64::new(angle.cos(), -angle.sin()) * odd_parts[k];
             result[k] = even_parts[k] + c;
@@ -102,11 +107,19 @@ mod tests {
     use ndarray::array;
     use num_complex::Complex64;
 
-    fn compare_vecs(result: &[Complex64], expect: &[Complex64]) {
+    fn compare_complex_vecs(result: &[Complex64], expect: &[Complex64]) {
         let eps = 0.00000001;
         result.iter().zip(expect.iter()).for_each(|(x, y)| {
             assert!((x.re.abs() - y.re.abs()).abs() <= eps);
             assert!((x.im.abs() - y.im.abs()).abs() <= eps);
+        });
+    }
+
+    fn compare_real_vecs(result: &[f64], expect: &[f64]) {
+        let eps = 0.00000001;
+        result.iter().zip(expect.iter()).for_each(|(x, y)| {
+            assert!((x.abs() - y.abs()).abs() <= eps);
+            assert!((x.abs() - y.abs()).abs() <= eps);
         });
     }
 
@@ -126,7 +139,27 @@ mod tests {
         let signal = vec![1.0, 2.0, 3.0, 4.0];
         let res_fft = fft_real(&signal);
         let res_dft = dft_real(&signal);
-        compare_vecs(&res_fft, &res_dft);
+        compare_complex_vecs(&res_fft, &res_dft);
+    }
+
+    #[test]
+    fn fft_real_test() {
+        let signal = vec![1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0];
+        let res = fft_real(&signal)
+            .iter()
+            .map(|x| x.norm())
+            .collect::<Vec<_>>();
+        let expect = vec![
+            4.0,
+            2.613125929752753,
+            0.0,
+            1.0823922002923938,
+            0.0,
+            1.0823922002923938,
+            0.0,
+            2.6131259297527527,
+        ];
+        compare_real_vecs(&res, &expect);
     }
 
     #[test]
@@ -207,7 +240,7 @@ mod tests {
             Complex64::new(4.0, 4.0),
         ];
         let result = dft(&f);
-        compare_vecs(&result, &expect);
+        compare_complex_vecs(&result, &expect);
     }
 
     #[test]
@@ -228,7 +261,7 @@ mod tests {
             Complex64::new(2.08155948, 1.65109876),
         ];
         let result = dft(&f);
-        compare_vecs(&result, &expect);
+        compare_complex_vecs(&result, &expect);
     }
 
     #[test]
@@ -242,6 +275,6 @@ mod tests {
         ];
         let spectrum = dft(&f);
         let signal = idft(&spectrum);
-        compare_vecs(&signal, &f);
+        compare_complex_vecs(&signal, &f);
     }
 }
