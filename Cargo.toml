@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 num-complex = "0.4.1"
+ndarray = "0.15.4"
 plotters = "0.3.1"
 
 [lib]

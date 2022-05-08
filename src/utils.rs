@@ -1,12 +1,8 @@
 use num_complex::Complex64;
 use plotters::prelude::*;
-use std::ops::Range;
+use std::{error::Error, ops::Range};
 
-pub fn plot_signal(
-    signal: &[f64],
-    title: &str,
-    y_range: Range<f64>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(), Box<dyn Error>> {
     let root = BitMapBackend::new(title, (640, 420)).into_drawing_area();
     root.fill(&WHITE)?;
 
@@ -65,8 +61,8 @@ pub fn plot_spectrum(
 
 #[cfg(test)]
 mod tests {
-    use num_complex::Complex64;
     use super::*;
+    use num_complex::Complex64;
 
     #[test]
     fn abs_spec() {
@@ -81,7 +77,7 @@ mod tests {
         assert_eq!(abs_spec, expect);
     }
 
-  #[test]
+    #[test]
     fn fftshift_1() {
         let signal = [0.0, 1.0, 2.0, 3.0, 4.0, -5.0, -4.0, -3.0, -2.0, -1.0];
         let shifted = fftshift_1d(&signal);
@@ -90,5 +86,4 @@ mod tests {
             [-5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0]
         );
     }
-
 }

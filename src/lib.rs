@@ -1,7 +1,8 @@
 mod utils;
 
+use ndarray::{array, Array, Array2, ArrayBase, ArrayView, Dim};
 use num_complex::Complex64;
-use std::f64::consts::PI;
+use std::{error::Error, f64::consts::PI};
 
 pub fn dft(signal: &[Complex64]) -> Vec<Complex64> {
     let n = signal.len();
@@ -78,7 +79,10 @@ pub fn fft(signal: &[Complex64]) -> Vec<Complex64> {
             signal[i] = signal[i % n];
         }
     }
-    fft_step(&signal, 1)
+    let mut res = fft_step(&signal, 1);
+    // resize the signal to the original size
+    res.resize(n, Complex64::default());
+    res
 }
 
 pub fn fft_real(signal: &[f64]) -> Vec<Complex64> {
@@ -89,9 +93,30 @@ pub fn fft_real(signal: &[f64]) -> Vec<Complex64> {
     fft(&complex_signal)
 }
 
+pub fn fft2(signal: &Array2<Complex64>) -> Result<Array2<Complex64>, Box<dyn Error>> {
+    let shape = signal.shape();
+    let (nx, ny) = (shape[0], shape[1]);
+    let mut fft_cols = Array2::<Complex64>::zeros((nx, 0));
+    for col in signal.columns() {
+        let v = col.to_vec();
+        let fft_col = fft(&v);
+        fft_cols.push_column(ArrayView::from(&fft_col))?;
+    }
+
+    let mut fft_rows = Array2::<Complex64>::zeros((0, ny));
+    for row in fft_cols.rows() {
+        let v = row.to_vec();
+        let fft_row = fft(&v);
+        fft_rows.push_row(ArrayView::from(&fft_row))?;
+    }
+
+    Ok(fft_rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::array;
     use num_complex::Complex64;
 
     fn compare_vecs(result: &[Complex64], expect: &[Complex64]) {
@@ -100,6 +125,48 @@ mod tests {
             assert!((x.re.abs() - y.re.abs()).abs() <= eps);
             assert!((x.im.abs() - y.im.abs()).abs() <= eps);
         });
+    }
+
+    #[test]
+    fn test_fft2() {
+        let a = array![
+            [Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0)],
+            [Complex64::new(3.0, 0.0), Complex64::new(4.0, 0.0)],
+            [Complex64::new(5.0, 0.0), Complex64::new(6.0, 0.0)]
+        ];
+
+        let res = fft2(&a);
+        println!("{:?}", res);
+    }
+
+    #[test]
+    fn dft_size() {
+        let signal = vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(3.0, 0.0),
+            Complex64::new(4.0, 0.0),
+            Complex64::new(5.0, 0.0),
+        ];
+        let res = dft(&signal);
+        assert_eq!(res.len(), signal.len());
+    }
+
+    #[test]
+    fn fft_size() {
+        let signal = vec![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(3.0, 0.0),
+            Complex64::new(4.0, 0.0),
+            Complex64::new(5.0, 0.0),
+            Complex64::new(6.0, 0.0),
+            Complex64::new(7.0, 0.0),
+            Complex64::new(8.0, 0.0),
+            Complex64::new(9.0, 0.0),
+        ];
+        let res = fft(&signal);
+        assert_eq!(res.len(), signal.len());
     }
 
     #[test]
