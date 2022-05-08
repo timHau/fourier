@@ -1,10 +1,10 @@
 mod utils;
 
-use ndarray::{Array2, ArrayView};
+use ndarray::{Array1, Array2, ArrayView};
 use num_complex::Complex64;
 use std::{error::Error, f64::consts::PI};
 
-pub fn dft(signal: &[Complex64]) -> Vec<Complex64> {
+pub fn dft(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();
     let mut result = vec![Complex64::new(0.0, 0.0); n];
     for j in 0..n {
@@ -17,11 +17,8 @@ pub fn dft(signal: &[Complex64]) -> Vec<Complex64> {
     result
 }
 
-pub fn dft_real(signal: &[f64]) -> Vec<Complex64> {
-    let complex_signal = signal
-        .iter()
-        .map(|x| Complex64::new(*x, 0.0))
-        .collect::<Vec<_>>();
+pub fn dft_real(signal: &Array1<f64>) -> Vec<Complex64> {
+    let complex_signal = signal.mapv(|x| Complex64::new(x, 0.0));
     return dft(&complex_signal);
 }
 
@@ -39,18 +36,13 @@ pub fn idft(spectrum: &[Complex64]) -> Vec<Complex64> {
     result
 }
 
-pub fn fft_step(signal: &[Complex64]) -> Vec<Complex64> {
+pub fn fft_step(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();
     if n == 1 {
         return signal.to_vec();
     } else {
-        let even = signal.iter().copied().step_by(2).collect::<Vec<_>>();
-        let odd = signal
-            .iter()
-            .copied()
-            .skip(1)
-            .step_by(2)
-            .collect::<Vec<_>>();
+        let even = Array1::from_iter(signal.iter().copied().step_by(2));
+        let odd = Array1::from_iter(signal.iter().copied().skip(1).step_by(2));
 
         let even_parts = fft_step(&even);
         let odd_parts = fft_step(&odd);
@@ -65,19 +57,15 @@ pub fn fft_step(signal: &[Complex64]) -> Vec<Complex64> {
     }
 }
 
-pub fn fft(signal: &[Complex64]) -> Vec<Complex64> {
+pub fn fft(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();
     assert!(n.is_power_of_two());
-    let signal = signal.to_vec();
     let res = fft_step(&signal);
     res
 }
 
-pub fn fft_real(signal: &[f64]) -> Vec<Complex64> {
-    let complex_signal = signal
-        .iter()
-        .map(|x| Complex64::new(*x, 0.0))
-        .collect::<Vec<_>>();
+pub fn fft_real(signal: &Array1<f64>) -> Vec<Complex64> {
+    let complex_signal = signal.mapv(|x| Complex64::new(x, 0.0));
     fft(&complex_signal)
 }
 
@@ -86,19 +74,22 @@ pub fn fft2(signal: &Array2<Complex64>) -> Result<Array2<Complex64>, Box<dyn Err
     let (nx, ny) = (shape[0], shape[1]);
     let mut fft_cols = Array2::<Complex64>::zeros((nx, 0));
     for col in signal.columns() {
-        let v = col.to_vec();
-        let fft_col = fft(&v);
+        let fft_col = fft(&col.to_owned());
         fft_cols.push_column(ArrayView::from(&fft_col))?;
     }
 
     let mut fft_rows = Array2::<Complex64>::zeros((0, ny));
     for row in fft_cols.rows() {
-        let v = row.to_vec();
-        let fft_row = fft(&v);
+        let fft_row = fft(&row.to_owned());
         fft_rows.push_row(ArrayView::from(&fft_row))?;
     }
 
     Ok(fft_rows)
+}
+
+pub fn fft2_real(signal: &Array2<f64>) -> Result<Array2<Complex64>, Box<dyn Error>> {
+    let signal = signal.mapv(|x| Complex64::new(x, 0.0));
+    fft2(&signal)
 }
 
 #[cfg(test)]
@@ -131,12 +122,11 @@ mod tests {
             [Complex64::new(5.0, 0.0), Complex64::new(6.0, 0.0)],
             [Complex64::new(7.0, 0.0), Complex64::new(8.0, 0.0)],
         ];
-        let res = fft2(&signal);
     }
 
     #[test]
     fn dft_fft_real_power_of_two() {
-        let signal = vec![1.0, 2.0, 3.0, 4.0];
+        let signal = array![1.0, 2.0, 3.0, 4.0];
         let res_fft = fft_real(&signal);
         let res_dft = dft_real(&signal);
         compare_complex_vecs(&res_fft, &res_dft);
@@ -144,7 +134,7 @@ mod tests {
 
     #[test]
     fn fft_real_test() {
-        let signal = vec![1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0];
+        let signal = array![1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0];
         let res = fft_real(&signal)
             .iter()
             .map(|x| x.norm())
@@ -164,7 +154,7 @@ mod tests {
 
     #[test]
     fn dft_size() {
-        let signal = vec![
+        let signal = array![
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),
             Complex64::new(3.0, 0.0),
@@ -177,7 +167,7 @@ mod tests {
 
     #[test]
     fn fft_size() {
-        let signal = vec![
+        let signal = array![
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),
             Complex64::new(3.0, 0.0),
@@ -203,7 +193,7 @@ mod tests {
                 + f64::sin(2.0 * PI * freq_2 * (i as f64) / (n as f64));
         }
 
-        let spectrum = fft_real(&signal);
+        let spectrum = fft_real(&Array1::from_vec(signal));
         assert!(utils::plot_spectrum(&spectrum, "./img/spectrum_fft.png").is_ok());
     }
 
@@ -221,13 +211,13 @@ mod tests {
 
         assert!(utils::plot_signal(&signal, "./img/signal.png", -2.0..2.0).is_ok());
 
-        let spectrum = dft_real(&signal);
+        let spectrum = dft_real(&Array1::from_vec(signal));
         assert!(utils::plot_spectrum(&spectrum, "./img/spectrum_dft.png").is_ok());
     }
 
     #[test]
     fn simple_dft_test() {
-        let f = [
+        let f = array![
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, -1.0),
             Complex64::new(0.0, -1.0),
@@ -246,7 +236,7 @@ mod tests {
     #[test]
     fn dft_test() {
         // test against SciPy https://docs.scipy.org/doc/scipy/tutorial/fft.html
-        let f = [
+        let f = array![
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),
             Complex64::new(1.0, 0.0),
@@ -266,7 +256,7 @@ mod tests {
 
     #[test]
     fn idft_test() {
-        let f = [
+        let f = array![
             Complex64::new(1.0, 0.0),
             Complex64::new(2.0, 0.0),
             Complex64::new(1.0, 0.0),
@@ -275,6 +265,6 @@ mod tests {
         ];
         let spectrum = dft(&f);
         let signal = idft(&spectrum);
-        compare_complex_vecs(&signal, &f);
+        compare_complex_vecs(&signal, &f.to_vec());
     }
 }
