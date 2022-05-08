@@ -122,6 +122,8 @@ mod tests {
             [Complex64::new(5.0, 0.0), Complex64::new(6.0, 0.0)],
             [Complex64::new(7.0, 0.0), Complex64::new(8.0, 0.0)],
         ];
+        let res = fft2(&signal);
+        println!("{:?}", res);
     }
 
     #[test]
