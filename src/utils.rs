@@ -9,15 +9,15 @@ pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(
     let mut chart = ChartBuilder::on(&root)
         .margin(10)
         .x_label_area_size(30)
-        .y_label_area_size(30)
+        .y_label_area_size(50)
         .build_cartesian_2d(0.0f64..(signal.len() as f64), y_range)?;
 
     chart
         .configure_mesh()
         .x_labels(20)
         .y_labels(10)
-        .x_desc("x")
-        .y_desc("y")
+        .x_desc("time")
+        .y_desc("amplitude")
         .disable_mesh()
         .draw()?;
 
@@ -56,7 +56,33 @@ pub fn plot_spectrum(
     abs_spectrum = abs_spectrum.into_iter().take(n / 2).collect::<Vec<_>>();
     abs_spectrum.reverse();
 
-    plot_signal(&abs_spectrum, title, -10.0..300.0)
+    let root = BitMapBackend::new(title, (640, 420)).into_drawing_area();
+    root.fill(&WHITE)?;
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(10)
+        .x_label_area_size(30)
+        .y_label_area_size(50)
+        .build_cartesian_2d(0.0f64..(abs_spectrum.len() as f64), -10.0..300.0)?;
+
+    chart
+        .configure_mesh()
+        .x_labels(20)
+        .y_labels(10)
+        .x_desc("frequency")
+        .y_desc("amplitude")
+        .disable_mesh()
+        .draw()?;
+
+    chart.draw_series(LineSeries::new(
+        abs_spectrum.iter().enumerate().map(|(i, s)| (i as f64, *s)),
+        &RED,
+    ))?;
+
+    chart.configure_series_labels().draw()?;
+
+    root.present()?;
+    Ok(())
 }
 
 #[cfg(test)]
