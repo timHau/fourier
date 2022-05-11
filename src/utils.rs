@@ -2,6 +2,7 @@ use num_complex::Complex64;
 use plotters::prelude::*;
 use std::{error::Error, ops::Range};
 
+#[allow(unused)]
 pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(), Box<dyn Error>> {
     let root = BitMapBackend::new(title, (640, 420)).into_drawing_area();
     root.fill(&WHITE)?;
@@ -32,6 +33,7 @@ pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(
     Ok(())
 }
 
+#[allow(unused)]
 pub fn fftshift_1d(spectrum: &[f64]) -> Vec<f64> {
     let n = spectrum.len();
     let mut spectrum = spectrum.to_vec();
@@ -39,10 +41,12 @@ pub fn fftshift_1d(spectrum: &[f64]) -> Vec<f64> {
     spectrum
 }
 
+#[allow(unused)]
 pub fn absolute_spectrum(spectrum: &[Complex64]) -> Vec<f64> {
     spectrum.iter().map(|x| x.norm()).collect::<Vec<_>>()
 }
 
+#[allow(unused)]
 pub fn plot_spectrum(
     spectrum: &[Complex64],
     title: &str,
