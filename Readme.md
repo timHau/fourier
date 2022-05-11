@@ -8,6 +8,9 @@ I also plan to implement the Cooley-Tuckey for [general Factorizations](https://
 This library uses the [ndarry](https://github.com/rust-ndarray/ndarray) crate to handle multidimensional arrays. There is distinction between real- and complex-valued data. To represent complex numbers the [num_complex](https://crates.io/crates/num_complex) crate is used. 
 
 ```rust
+use fourier::{fft_real, fft};
+use ndarray::array;
+
 // if you have a real valued signal
 let signal = array![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
 let res_fft = fft_real(&signal);
