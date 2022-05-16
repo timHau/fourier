@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 mod utils;
 
 use ndarray::{Array1, Array2, ArrayView};
