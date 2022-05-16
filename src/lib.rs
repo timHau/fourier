@@ -123,7 +123,20 @@ mod tests {
             [Complex64::new(7.0, 0.0), Complex64::new(8.0, 0.0)],
         ];
         let res = fft2(&signal);
-        println!("{:?}", res);
+        assert!(res.is_ok());
+
+        let expect = [
+            [Complex64::new(36.0, 0.0), Complex64::new(-4.0, 0.0)],
+            [Complex64::new(-8.0, 8.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(-8.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(-8.0, 8.0), Complex64::new(0.0, 0.0)],
+        ];
+
+        let res = res.unwrap();
+        for (i, e) in expect.iter().enumerate() {
+            let s = res.row(i);
+            compare_complex_vecs(&s.to_vec(), e);
+        }
     }
 
     #[test]
