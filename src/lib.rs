@@ -23,7 +23,7 @@ pub fn dft_real(signal: &Array1<f64>) -> Vec<Complex64> {
     return dft(&complex_signal);
 }
 
-pub fn idft(spectrum: &[Complex64]) -> Vec<Complex64> {
+pub fn idft(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
     let n = spectrum.len();
     let mut result = vec![Complex64::new(0.0, 0.0); n];
     for j in 0..n {
@@ -86,6 +86,24 @@ pub fn fft2(signal: &Array2<Complex64>) -> Array2<Complex64> {
     }
 
     fft_rows
+}
+
+pub fn ifft2(spectrum: &Array2<Complex64>) -> Array2<Complex64> {
+    let shape = spectrum.shape();
+    let (nx, ny) = (shape[0], shape[1]);
+    let mut ifft_cols = Array2::<Complex64>::zeros((nx, 0));
+    for col in spectrum.columns() {
+        let ifft_col = idft(&col.to_owned());
+        ifft_cols.push_column(ArrayView::from(&ifft_col)).unwrap();
+    }
+
+    let mut ifft_rows = Array2::<Complex64>::zeros((0, ny));
+    for row in ifft_cols.rows() {
+        let ifft_row = idft(&row.to_owned());
+        ifft_rows.push_row(ArrayView::from(&ifft_row)).unwrap();
+    }
+
+    ifft_rows
 }
 
 pub fn fft2_real(signal: &Array2<f64>) -> Array2<Complex64> {
@@ -152,7 +170,7 @@ pub fn fftshift_1d(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
+    use ndarray::{array, Array};
     use num_complex::Complex64;
 
     fn compare_complex_vecs(result: &[Complex64], expect: &[Complex64]) {
@@ -188,10 +206,26 @@ mod tests {
             [Complex64::new(-8.0, 8.0), Complex64::new(0.0, 0.0)],
         ];
 
-        let res = res;
         for (i, e) in expect.iter().enumerate() {
             let s = res.row(i);
             compare_complex_vecs(&s.to_vec(), e);
+        }
+    }
+
+    #[test]
+    fn test_ifft2() {
+        let signal = array![
+            [Complex64::new(1.0, 0.0), Complex64::new(2.0, 0.0)],
+            [Complex64::new(3.0, 0.0), Complex64::new(4.0, 0.0)],
+            [Complex64::new(5.0, 0.0), Complex64::new(6.0, 0.0)],
+            [Complex64::new(7.0, 0.0), Complex64::new(8.0, 0.0)],
+        ];
+        let f = fft2(&signal);
+        let res = ifft2(&f);
+  
+        for i in 0..4 {
+            let s = res.row(i);
+            compare_complex_vecs(&s.to_vec(), &signal.row(i).to_vec());
         }
     }
 
@@ -400,7 +434,7 @@ mod tests {
             Complex64::new(-1.0, 0.0),
             Complex64::new(1.5, 0.0),
         ];
-        let spectrum = dft(&f);
+        let spectrum = Array::from(dft(&f));
         let signal = idft(&spectrum);
         compare_complex_vecs(&signal, &f.to_vec());
     }
