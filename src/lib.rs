@@ -100,7 +100,28 @@ pub fn fftshift_1d_real(spectrum: &Array1<f64>) -> Vec<f64> {
     spectrum
 }
 
-pub fn fftshift_2d_real(spectrum: &Array2<f64>) -> Array2<f64> {
+pub fn fftshift2(spectrum: &Array2<Complex64>) -> Array2<Complex64> {
+    let shape = spectrum.shape();
+    let (nx, ny) = (shape[0], shape[1]);
+
+    let mut colums = Array2::<Complex64>::zeros((nx, 0));
+    for col in spectrum.columns() {
+        let mut v = col.to_vec();
+        v.rotate_right(nx / 2);
+        colums.push_column(ArrayView::from(&v)).unwrap();
+    }
+
+    let mut rows = Array2::<Complex64>::zeros((0, ny));
+    for row in colums.rows() {
+        let mut v = row.to_vec();
+        v.rotate_right(ny / 2);
+        rows.push_row(ArrayView::from(&v)).unwrap();
+    }
+
+    rows
+}
+
+pub fn fftshift2_real(spectrum: &Array2<f64>) -> Array2<f64> {
     let shape = spectrum.shape();
     let (nx, ny) = (shape[0], shape[1]);
 
@@ -275,7 +296,7 @@ mod tests {
     fn fftshift_2_r() {
         let signal = array![[0.0, 1.0, 2.0], [3.0, 4.0, -4.0], [-1.0, -3.0, -2.0]];
         let expect = array![[-2.0, -1.0, -3.0], [2.0, 0.0, 1.0], [-4.0, 3.0, 4.0]];
-        let shifted = fftshift_2d_real(&signal);
+        let shifted = fftshift2_real(&signal);
         assert_eq!(shifted, expect);
     }
 
@@ -293,7 +314,7 @@ mod tests {
             [5.0, 6.0, 7.0, 8.0, 1.0, 2.0, 3.0, 4.0],
             [4.0, 3.0, 2.0, 1.0, 8.0, 7.0, 6.0, 5.0],
         ];
-        let shifted = fftshift_2d_real(&signal);
+        let shifted = fftshift2_real(&signal);
         assert_eq!(shifted, expect);
     }
 
