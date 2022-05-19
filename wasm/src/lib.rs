@@ -1,23 +1,36 @@
 mod utils;
 
 use fourier::fft2_real;
-use ndarray::array;
+use js_sys::Float64Array;
+use ndarray::{array, Array2, ArrayView};
 use wasm_bindgen::prelude::*;
-
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+use web_sys::console;
 
 #[wasm_bindgen]
-pub fn greet() {
-    utils::set_panic_hook();
+pub struct FFT2 {
+    shape: (usize, usize),
+    data: Array2<f64>,
+}
 
-    let signal = array![
-        [1.0, 2.0, 3.0, 4.0],
-        [1.0, 2.0, 3.0, 4.0],
-        [1.0, 2.0, 3.0, 4.0],
-        [1.0, 2.0, 3.0, 4.0],
-    ];
+#[wasm_bindgen]
+impl FFT2 {
+    pub fn init(signal: &[f64], w: usize, h: usize) -> Self {
+        utils::set_panic_hook();
+        Self {
+            shape: (w, h),
+            data: Array2::from_shape_vec((w, h), signal.iter().cloned().collect::<Vec<f64>>())
+                .unwrap(),
+        }
+    }
 
-    let res = fft2_real(&signal);
+    pub fn forward(&self) -> Vec<f64> {
+        let fft_res = fft2_real(&self.data);
+        let mut res = vec![0.0; self.data.len()];
+        for i in 0..self.shape.0 {
+            for j in 0..self.shape.1 {
+                res[i * self.shape.1 + j] = fft_res[(i, j)].norm();
+            }
+        }
+        res
+    }
 }
