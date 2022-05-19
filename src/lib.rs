@@ -3,7 +3,7 @@ mod utils;
 
 use ndarray::{Array1, Array2, ArrayView};
 use num_complex::Complex64;
-use std::{error::Error, f64::consts::PI};
+use std::f64::consts::PI;
 
 pub fn dft(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();

@@ -1,8 +1,8 @@
+use crate::fftshift_1d_real;
 use ndarray::Array1;
 use num_complex::Complex64;
 use plotters::prelude::*;
 use std::{error::Error, ops::Range};
-use crate::fftshift_1d_real;
 
 #[allow(unused)]
 pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(), Box<dyn Error>> {
