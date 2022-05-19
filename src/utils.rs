@@ -1,6 +1,8 @@
+use ndarray::Array1;
 use num_complex::Complex64;
 use plotters::prelude::*;
 use std::{error::Error, ops::Range};
+use crate::fftshift_1d_real;
 
 #[allow(unused)]
 pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(), Box<dyn Error>> {
@@ -34,14 +36,6 @@ pub fn plot_signal(signal: &[f64], title: &str, y_range: Range<f64>) -> Result<(
 }
 
 #[allow(unused)]
-pub fn fftshift_1d(spectrum: &[f64]) -> Vec<f64> {
-    let n = spectrum.len();
-    let mut spectrum = spectrum.to_vec();
-    spectrum.rotate_right(n / 2);
-    spectrum
-}
-
-#[allow(unused)]
 pub fn absolute_spectrum(spectrum: &[Complex64]) -> Vec<f64> {
     spectrum.iter().map(|x| x.norm()).collect::<Vec<_>>()
 }
@@ -55,7 +49,7 @@ pub fn plot_spectrum(
     // we are only in the absolute value of the spectrum
     let mut abs_spectrum = absolute_spectrum(spectrum);
     // we need to shift the spectrum to the center
-    abs_spectrum = fftshift_1d(&abs_spectrum);
+    abs_spectrum = fftshift_1d_real(&Array1::from_vec(abs_spectrum));
     // the spectrum is symmetric around 0.0 we only need the positive part
     abs_spectrum = abs_spectrum.into_iter().take(n / 2).collect::<Vec<_>>();
     abs_spectrum.reverse();
@@ -105,15 +99,5 @@ mod tests {
         let abs_spec = absolute_spectrum(&spec);
         let expect = vec![0.0, 5.0, 10.0, 25.0];
         assert_eq!(abs_spec, expect);
-    }
-
-    #[test]
-    fn fftshift_1() {
-        let signal = [0.0, 1.0, 2.0, 3.0, 4.0, -5.0, -4.0, -3.0, -2.0, -1.0];
-        let shifted = fftshift_1d(&signal);
-        assert_eq!(
-            shifted,
-            [-5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0]
-        );
     }
 }
