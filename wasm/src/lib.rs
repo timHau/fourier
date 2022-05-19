@@ -1,6 +1,6 @@
 mod utils;
 
-use fourier::fft2_real;
+use fourier::{fft2_real, fftshift2};
 use js_sys::Float64Array;
 use ndarray::{array, Array2, ArrayView};
 use wasm_bindgen::prelude::*;
@@ -25,10 +25,11 @@ impl FFT2 {
 
     pub fn forward(&self) -> Vec<f64> {
         let fft_res = fft2_real(&self.data);
+        let shifted = fftshift2(&fft_res);
         let mut res = vec![0.0; self.data.len()];
         for i in 0..self.shape.0 {
             for j in 0..self.shape.1 {
-                res[i * self.shape.1 + j] = fft_res[(i, j)].norm();
+                res[i * self.shape.1 + j] = shifted[(i, j)].norm();
             }
         }
         res
