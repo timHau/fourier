@@ -10,6 +10,7 @@ This library uses the [ndarry](https://github.com/rust-ndarray/ndarray) crate to
 ```rust
 use fourier::{fft_real, fft};
 use ndarray::array;
+use num_complex::Complex64;
 
 // if you have a real valued signal
 let signal = array![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
