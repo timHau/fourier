@@ -146,6 +146,13 @@ pub fn ifft2(spectrum: &Array2<Complex64>) -> Array2<Complex64> {
     ifft_rows
 }
 
+pub fn fftshift_1d(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
+    let n = spectrum.len();
+    let mut spectrum = spectrum.to_vec();
+    spectrum.rotate_right(n / 2);
+    spectrum
+}
+
 pub fn fftshift_1d_real(spectrum: &Array1<f64>) -> Vec<f64> {
     let n = spectrum.len();
     let mut spectrum = spectrum.to_vec();
@@ -178,13 +185,6 @@ pub fn fftshift2_real(spectrum: &Array2<f64>) -> Array2<f64> {
     let spectrum = spectrum.mapv(|x| Complex64::new(x, 0.0));
     let spectrum = fftshift2(&spectrum);
     spectrum.mapv(|x| x.re)
-}
-
-pub fn fftshift_1d(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
-    let n = spectrum.len();
-    let mut spectrum = spectrum.to_vec();
-    spectrum.rotate_right(n / 2);
-    spectrum
 }
 
 #[cfg(test)]
