@@ -1,6 +1,6 @@
 mod utils;
 
-use fourier::{fft2_real, fftshift2};
+use fourier::{fft2_real, fftshift2, ifft2};
 use js_sys::Float64Array;
 use ndarray::{array, Array2, ArrayView};
 use wasm_bindgen::prelude::*;
@@ -33,5 +33,10 @@ impl FFT2 {
             }
         }
         res
+    }
+
+    pub fn inverse(spectrum: &[f64]) -> Vec<f64> {
+        let complex_signal = spectrum.iter().map(|x| Complex64::new(*x, 0.0));
+        let a = ifft2(&complex_signal).collect::<Vec<_>>();
     }
 }

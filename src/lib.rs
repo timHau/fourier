@@ -5,6 +5,7 @@ use ndarray::{Array1, Array2, ArrayView};
 use num_complex::Complex64;
 use std::f64::consts::PI;
 
+/// Discrete Fourier Transform (Complex valued)
 pub fn dft(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();
     let mut result = vec![Complex64::new(0.0, 0.0); n];
@@ -18,11 +19,13 @@ pub fn dft(signal: &Array1<Complex64>) -> Vec<Complex64> {
     result
 }
 
+/// Discrete Fourier Transform (Real valued)
 pub fn dft_real(signal: &Array1<f64>) -> Vec<Complex64> {
     let complex_signal = signal.mapv(|x| Complex64::new(x, 0.0));
     return dft(&complex_signal);
 }
 
+/// Inverse Discrete Fourier Transform (Complex valued)
 pub fn idft(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
     let n = spectrum.len();
     let mut result = vec![Complex64::new(0.0, 0.0); n];
@@ -37,7 +40,7 @@ pub fn idft(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
     result
 }
 
-pub fn fft_step(signal: &Array1<Complex64>) -> Vec<Complex64> {
+fn fft_step(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();
     if n == 1 {
         return signal.to_vec();
@@ -58,18 +61,48 @@ pub fn fft_step(signal: &Array1<Complex64>) -> Vec<Complex64> {
     }
 }
 
+/// Fast Fourier Transform (Complex valued)
 pub fn fft(signal: &Array1<Complex64>) -> Vec<Complex64> {
     let n = signal.len();
     assert!(n.is_power_of_two());
-    let res = fft_step(&signal);
-    res
+    fft_step(&signal)
 }
 
+fn ifft_step(signal: &Array1<Complex64>) -> Vec<Complex64> {
+    let n = signal.len();
+    if n == 1 {
+        return signal.to_vec();
+    } else {
+        let even = Array1::from_iter(signal.iter().copied().step_by(2));
+        let odd = Array1::from_iter(signal.iter().copied().skip(1).step_by(2));
+
+        let even_parts = ifft_step(&even);
+        let odd_parts = ifft_step(&odd);
+        let mut result = vec![Complex64::default(); n];
+        for k in 0..(n / 2) {
+            let angle = (2.0 * PI * (k as f64)) / (n as f64);
+            let c = Complex64::new(angle.cos(), angle.sin()) * odd_parts[k];
+            result[k] = even_parts[k] + c;
+            result[k + n / 2] = even_parts[k] - c;
+        }
+        result
+    }
+}
+
+/// Inverse Fast Fourier Transform (Complex valued)
+pub fn ifft(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
+    let n = spectrum.len();
+    assert!(n.is_power_of_two());
+    ifft_step(&spectrum).iter().map(|x| x / n as f64).collect()
+}
+
+/// Inverse Fast Fourier Transform (Real valued)
 pub fn fft_real(signal: &Array1<f64>) -> Vec<Complex64> {
     let complex_signal = signal.mapv(|x| Complex64::new(x, 0.0));
     fft(&complex_signal)
 }
 
+/// 2D Fast Fourier Transform (Complex valued)
 pub fn fft2(signal: &Array2<Complex64>) -> Array2<Complex64> {
     let shape = signal.shape();
     let (nx, ny) = (shape[0], shape[1]);
@@ -88,27 +121,29 @@ pub fn fft2(signal: &Array2<Complex64>) -> Array2<Complex64> {
     fft_rows
 }
 
+/// 2D Fast Fourier Transform (Real valued)
+pub fn fft2_real(signal: &Array2<f64>) -> Array2<Complex64> {
+    let signal = signal.mapv(|x| Complex64::new(x, 0.0));
+    fft2(&signal)
+}
+
+/// Inverse 2D Fast Fourier Transform (Complex valued)
 pub fn ifft2(spectrum: &Array2<Complex64>) -> Array2<Complex64> {
     let shape = spectrum.shape();
     let (nx, ny) = (shape[0], shape[1]);
     let mut ifft_cols = Array2::<Complex64>::zeros((nx, 0));
     for col in spectrum.columns() {
-        let ifft_col = idft(&col.to_owned());
+        let ifft_col = ifft(&col.to_owned());
         ifft_cols.push_column(ArrayView::from(&ifft_col)).unwrap();
     }
 
     let mut ifft_rows = Array2::<Complex64>::zeros((0, ny));
     for row in ifft_cols.rows() {
-        let ifft_row = idft(&row.to_owned());
+        let ifft_row = ifft(&row.to_owned());
         ifft_rows.push_row(ArrayView::from(&ifft_row)).unwrap();
     }
 
     ifft_rows
-}
-
-pub fn fft2_real(signal: &Array2<f64>) -> Array2<Complex64> {
-    let signal = signal.mapv(|x| Complex64::new(x, 0.0));
-    fft2(&signal)
 }
 
 pub fn fftshift_1d_real(spectrum: &Array1<f64>) -> Vec<f64> {
@@ -222,9 +257,10 @@ mod tests {
         ];
         let f = fft2(&signal);
         let res = ifft2(&f);
-  
+
         for i in 0..4 {
             let s = res.row(i);
+            println!("s = {:?}, signal = {:?}", s, signal.row(i));
             compare_complex_vecs(&s.to_vec(), &signal.row(i).to_vec());
         }
     }
@@ -436,6 +472,36 @@ mod tests {
         ];
         let spectrum = Array::from(dft(&f));
         let signal = idft(&spectrum);
+        compare_complex_vecs(&signal, &f.to_vec());
+    }
+
+    #[test]
+    fn ifft_fft() {
+        let f = array![
+            Complex64::new(1.0, 0.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(-1.0, 0.0),
+        ];
+        let fft = fft(&f);
+        let signal = ifft(&Array::from_vec(fft));
+        compare_complex_vecs(&signal, &f.to_vec());
+    }
+
+    #[test]
+    fn ifft_fft_2() {
+        let f = array![
+            Complex64::new(1.0, 5.0),
+            Complex64::new(2.0, 0.0),
+            Complex64::new(4.0, 1.0),
+            Complex64::new(-1.0, 2.0),
+            Complex64::new(-9.0, 0.0),
+            Complex64::new(12.0, 1.0),
+            Complex64::new(1.0, 0.0),
+            Complex64::new(-1.0, 4.0),
+        ];
+        let fft = fft(&f);
+        let signal = ifft(&Array::from_vec(fft));
         compare_complex_vecs(&signal, &f.to_vec());
     }
 }
