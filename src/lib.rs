@@ -175,24 +175,9 @@ pub fn fftshift2(spectrum: &Array2<Complex64>) -> Array2<Complex64> {
 }
 
 pub fn fftshift2_real(spectrum: &Array2<f64>) -> Array2<f64> {
-    let shape = spectrum.shape();
-    let (nx, ny) = (shape[0], shape[1]);
-
-    let mut colums = Array2::<f64>::zeros((nx, 0));
-    for col in spectrum.columns() {
-        let mut v = col.to_vec();
-        v.rotate_right(nx / 2);
-        colums.push_column(ArrayView::from(&v)).unwrap();
-    }
-
-    let mut rows = Array2::<f64>::zeros((0, ny));
-    for row in colums.rows() {
-        let mut v = row.to_vec();
-        v.rotate_right(ny / 2);
-        rows.push_row(ArrayView::from(&v)).unwrap();
-    }
-
-    rows
+    let spectrum = spectrum.mapv(|x| Complex64::new(x, 0.0));
+    let spectrum = fftshift2(&spectrum);
+    spectrum.mapv(|x| x.re)
 }
 
 pub fn fftshift_1d(spectrum: &Array1<Complex64>) -> Vec<Complex64> {
