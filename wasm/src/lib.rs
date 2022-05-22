@@ -35,7 +35,7 @@ impl FFT2 {
         res
     }
 
-    pub fn low_pass_filter(&self, spectrum: &[f64], threshold: f64, is_low_pass: bool) -> Vec<f64> {
+    pub fn filter(&self, spectrum: &[f64], threshold: f64, is_low_pass: bool) -> Vec<f64> {
         let (w, h) = self.shape;
         let length = spectrum.len();
         let mut res = spectrum.clone().to_vec();
