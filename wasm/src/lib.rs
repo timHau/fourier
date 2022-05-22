@@ -35,6 +35,22 @@ impl FFT2 {
         res
     }
 
+    pub fn low_pass_filter(&self, spectrum: &[f64], threshold: f64, is_low_pass: bool) -> Vec<f64> {
+        let (w, h) = self.shape;
+        let length = spectrum.len();
+        let mut res = spectrum.clone().to_vec();
+        for k in 0..length / 2 {
+            let (i, j) = ((k % w) as f64, (k / w) as f64);
+            let (x, y) = (i - w as f64 / 2.0, j - h as f64 / 2.0);
+            let dist = x.hypot(y);
+            if (is_low_pass && dist > threshold) || (!is_low_pass && dist <= threshold) {
+                res[2 * k] = 0.0;
+                res[2 * k + 1] = 0.0;
+            }
+        }
+        res
+    }
+
     pub fn inverse(&self, spectrum: &[f64]) -> Vec<f64> {
         let complex_signal = spectrum
             .chunks(2)
