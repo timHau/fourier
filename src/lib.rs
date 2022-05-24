@@ -1,27 +1,10 @@
 #[cfg(not(target_arch = "wasm32"))]
 mod utils;
+mod plan;
 
 use ndarray::{Array1, Array2, ArrayView};
 use num_complex::Complex64;
 use std::f64::consts::PI;
-
-pub fn factor(n: usize) -> Vec<usize> {
-    let mut res = vec![];
-    let mut n = n;
-    let mut i = 2;
-    while i * i <= n {
-        if n % i == 0 {
-            n /= i;
-            res.push(i);
-        } else {
-            i += 1;
-        }
-    }
-    if n > 1 {
-        res.push(n);
-    }
-    res
-}
 
 /// Discrete Fourier Transform (Complex valued)
 pub fn dft(signal: &Array1<Complex64>) -> Vec<Complex64> {
@@ -472,11 +455,5 @@ mod tests {
         let fft = fft(&f);
         let signal = ifft(&Array::from_vec(fft));
         compare_complex_vecs(&signal, &f.to_vec());
-    }
-
-    #[test]
-    fn prime_factors() {
-        let prime_factors = factor(12);
-        assert_eq!(prime_factors, vec![2, 2, 3]);
     }
 }
