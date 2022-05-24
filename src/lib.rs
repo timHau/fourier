@@ -374,40 +374,6 @@ mod tests {
     }
 
     #[test]
-    fn example_plot_fft_real() {
-        let n = 256;
-        let mut signal = vec![0.0; n];
-
-        let freq_1 = 10.0;
-        let freq_2 = 100.0;
-        for i in 0..n {
-            signal[i] += f64::sin(2.0 * PI * freq_1 * (i as f64) / (n as f64))
-                + f64::sin(2.0 * PI * freq_2 * (i as f64) / (n as f64));
-        }
-
-        let spectrum = fft_real(&Array1::from_vec(signal));
-        assert!(utils::plot_spectrum(&spectrum, "./img/spectrum_fft.png").is_ok());
-    }
-
-    #[test]
-    fn example_plot_dft() {
-        let n = 256;
-        let mut signal = vec![0.0; n];
-
-        let freq_1 = 10.0;
-        let freq_2 = 100.0;
-        for i in 0..n {
-            signal[i] += f64::sin(2.0 * PI * freq_1 * (i as f64) / (n as f64))
-                + f64::sin(2.0 * PI * freq_2 * (i as f64) / (n as f64));
-        }
-
-        assert!(utils::plot_signal(&signal, "./img/signal.png", -2.0..2.0).is_ok());
-
-        let spectrum = dft_real(&Array1::from_vec(signal));
-        assert!(utils::plot_spectrum(&spectrum, "./img/spectrum_dft.png").is_ok());
-    }
-
-    #[test]
     fn simple_dft_test() {
         let f = array![
             Complex64::new(1.0, 0.0),
